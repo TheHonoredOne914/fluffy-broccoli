@@ -44,26 +44,41 @@ export function extractProviderKeys(req: ProviderKeyRequest, env: ProviderKeyEnv
     return first?.trim() || null;
   };
 
+  const getEnvKeys = (baseName: string): string | null => {
+    const keys: string[] = [];
+    // Try _1 to _5 keys
+    for (let i = 1; i <= 5; i++) {
+      const val = (env as Record<string, string | undefined>)[`${baseName}_${i}`];
+      if (val?.trim()) keys.push(val.trim());
+    }
+    // Also add the base key
+    const baseVal = (env as Record<string, string | undefined>)[baseName];
+    if (baseVal?.trim()) keys.push(baseVal.trim());
+    
+    const uniqueKeys = [...new Set(keys)];
+    return uniqueKeys.length > 0 ? uniqueKeys.join(",") : null;
+  };
+
   return {
-    groqKey: h("x-groq-api-key") ?? env.GROQ_API_KEY ?? null,
-    ollamaKey: h("x-ollama-api-key") ?? env.OLLAMA_API_KEY ?? null,
-    ollamaBase: h("x-ollama-base-url") ?? env.OLLAMA_BASE_URL ?? null,
-    nvidiaKey: h("x-nvidia-api-key") ?? env.NVIDIA_API_KEY ?? null,
-    geminiKey: h("x-gemini-api-key") ?? env.GEMINI_API_KEY ?? null,
-    openrouterKey: h("x-openrouter-api-key") ?? env.OPENROUTER_API_KEY ?? env.OPENROUTER_KEY ?? null,
-    githubToken: h("x-github-models-api-key") ?? h("x-github-token") ?? env.GITHUB_MODELS_API_KEY ?? env.GITHUB_TOKEN ?? null,
-    tavilyKey: h("x-tavily-api-key") ?? env.TAVILY_API_KEY ?? null,
-    serperKey: h("x-serper-api-key") ?? env.SERPER_API_KEY ?? env.SERPER_KEY ?? null,
-    exaKey: h("x-exa-api-key") ?? env.EXA_API_KEY ?? null,
-    braveKey: h("x-brave-api-key") ?? env.BRAVE_API_KEY ?? env.BRAVE_KEY ?? null,
-    firecrawlKey: h("x-firecrawl-api-key") ?? env.FIRECRAWL_API_KEY ?? null,
-    jinaKey: h("x-jina-api-key") ?? env.JINA_API_KEY ?? env.JINA_KEY ?? null,
-    scraperapiKey: h("x-scraperapi-api-key") ?? h("x-scraper-api-key") ?? env.SCRAPERAPI_KEY ?? null,
-    zenrowsKey: h("x-zenrows-api-key") ?? env.ZENROWS_API_KEY ?? null,
-    scrapingbeeKey: h("x-scrapingbee-api-key") ?? env.SCRAPINGBEE_API_KEY ?? null,
-    geekflareKey: h("x-geekflare-api-key") ?? env.GEEKFLARE_API_KEY ?? null,
-    hfToken: h("x-hf-token") ?? env.HF_TOKEN ?? null,
-    cerebrasKey: h("x-cerebras-api-key") ?? env.CEREBRAS_API_KEY ?? null,
-    openaiKey: h("x-openai-api-key") ?? env.OPENAI_API_KEY ?? null,
+    groqKey: h("x-groq-api-key") ?? getEnvKeys("GROQ_API_KEY") ?? null,
+    ollamaKey: h("x-ollama-api-key") ?? getEnvKeys("OLLAMA_API_KEY") ?? null,
+    ollamaBase: h("x-ollama-base-url") ?? getEnvKeys("OLLAMA_BASE_URL") ?? null,
+    nvidiaKey: h("x-nvidia-api-key") ?? getEnvKeys("NVIDIA_API_KEY") ?? null,
+    geminiKey: h("x-gemini-api-key") ?? getEnvKeys("GEMINI_API_KEY") ?? null,
+    openrouterKey: h("x-openrouter-api-key") ?? getEnvKeys("OPENROUTER_API_KEY") ?? getEnvKeys("OPENROUTER_KEY") ?? null,
+    githubToken: h("x-github-models-api-key") ?? h("x-github-token") ?? getEnvKeys("GITHUB_MODELS_API_KEY") ?? getEnvKeys("GITHUB_TOKEN") ?? null,
+    tavilyKey: h("x-tavily-api-key") ?? getEnvKeys("TAVILY_API_KEY") ?? null,
+    serperKey: h("x-serper-api-key") ?? getEnvKeys("SERPER_API_KEY") ?? getEnvKeys("SERPER_KEY") ?? null,
+    exaKey: h("x-exa-api-key") ?? getEnvKeys("EXA_API_KEY") ?? null,
+    braveKey: h("x-brave-api-key") ?? getEnvKeys("BRAVE_API_KEY") ?? getEnvKeys("BRAVE_KEY") ?? null,
+    firecrawlKey: h("x-firecrawl-api-key") ?? getEnvKeys("FIRECRAWL_API_KEY") ?? null,
+    jinaKey: h("x-jina-api-key") ?? getEnvKeys("JINA_API_KEY") ?? getEnvKeys("JINA_KEY") ?? null,
+    scraperapiKey: h("x-scraperapi-api-key") ?? h("x-scraper-api-key") ?? getEnvKeys("SCRAPERAPI_KEY") ?? null,
+    zenrowsKey: h("x-zenrows-api-key") ?? getEnvKeys("ZENROWS_API_KEY") ?? null,
+    scrapingbeeKey: h("x-scrapingbee-api-key") ?? getEnvKeys("SCRAPINGBEE_API_KEY") ?? null,
+    geekflareKey: h("x-geekflare-api-key") ?? getEnvKeys("GEEKFLARE_API_KEY") ?? null,
+    hfToken: h("x-hf-token") ?? getEnvKeys("HF_TOKEN") ?? null,
+    cerebrasKey: h("x-cerebras-api-key") ?? getEnvKeys("CEREBRAS_API_KEY") ?? null,
+    openaiKey: h("x-openai-api-key") ?? getEnvKeys("OPENAI_API_KEY") ?? null,
   };
 }

@@ -18,6 +18,7 @@ import { LRUCache } from "lru-cache";
 import type { DimensionScore, SearchResult, CourtJudgement } from "./types.js";
 import { canonicalizeUrl, scoreRelevance, type TopicType } from "./rag.js";
 import { logger } from "./logger.js";
+import { multiKeyFetch } from "./multi-key-fetch.js";
 import { cacheGet, cacheSet } from "./cache.js";
 import { telemetry } from "./telemetry.js";
 import { buildAgendaContract } from "../core/agenda/agenda-contract.js";
@@ -147,7 +148,7 @@ const IN_FLIGHT_DEEP = new Map<string, Promise<SearchResult[]>>();
 
 const LEGAL_QUERY_PATTERN = /\b(court|judg|verdict|article \d+|section \d+|ipc|crpc|uapa|sedition|constitution|writ|pil|sc|hc|supreme court|high court|tribunal|nclat|ncdrc)\b/i;
 
-// â”€â”€ Source Scoring â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â”€â”€ Source Scoring â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /**
  * Score a URL by source authority for Indian MUN research.
@@ -425,7 +426,7 @@ export function extractCourtJudgement(content: string, url: string): CourtJudgem
   return { isJudgement: true, caseName, caseNumber, year, court, bench, held, relevance, url };
 }
 
-// â”€â”€ Query Engineering â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â”€â”€ Query Engineering â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /**
  * Takes any user query and returns 6 engineered sub-queries targeting
@@ -590,7 +591,7 @@ function engineeredQueriesFromOfficialPlanner(query: string, engine: SearchEngin
   return selected;
 }
 
-// â”€â”€ Post-processing pipeline â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â”€â”€ Post-processing pipeline â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /**
  * Recency signal: extract the most recent year mentioned in the URL/title.
@@ -662,7 +663,7 @@ function postProcess(
   return results;
 }
 
-// â”€â”€ Public API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â”€â”€ Public API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /**
  * Main search function. Call this from all route handlers.
@@ -685,6 +686,7 @@ export async function searchWeb(
     serperKey?: string | null;
     exaKey?: string | null;
     braveKey?: string | null;
+    abortSignal?: AbortSignal;
   },
   topic?: TopicType
 ): Promise<SearchResult[]> {
@@ -815,7 +817,7 @@ function applyResultLimit(results: SearchResult[], topic?: TopicType): SearchRes
 }
 
 /**
- * Deep search â€” runs Tavily advanced + DDG HTML in parallel for maximum coverage.
+ * Deep search — runs Tavily advanced + DDG HTML in parallel for maximum coverage.
  * Backward-compatible wrapper used by anthropic.ts orchestration layer.
  */
 export async function searchWebDeep(
@@ -825,6 +827,7 @@ export async function searchWebDeep(
     serperKey?: string | null;
     exaKey?: string | null;
     braveKey?: string | null;
+    abortSignal?: AbortSignal;
   },
   topic?: TopicType
 ): Promise<SearchResult[]> {
@@ -957,9 +960,9 @@ export function sourceBadge(r: SearchResult): string {
   if (u.includes("cag.gov.in"))  return "ðŸ“Š [CAG REPORT]";
   if (u.includes("ncrb.gov.in")) return "ðŸ”¢ [NCRB DATA]";
   if (u.includes("pib.gov.in"))  return "ðŸ“¢ [PIB OFFICIAL]";
-  if (r.sourceType === "court_judgement") return "âš–ï¸ [COURT]";
-  if (r.sourceType === "government_india" && r.score === 10) return "ðŸ›ï¸ [GOV.IN]";
-  if (r.sourceType === "government_international" && r.score === 10) return "ðŸŒ [INTL GOV]";
+  if (r.sourceType === "court_judgement") return "âš–ï¸  [COURT]";
+  if (r.sourceType === "government_india" && r.score === 10) return "ðŸ ›ï¸  [GOV.IN]";
+  if (r.sourceType === "government_international" && r.score === 10) return "ðŸŒ  [INTL GOV]";
   return "";
 }
 
@@ -1055,7 +1058,7 @@ export async function searchIndianKanoon(query: string, topic?: TopicType, abort
   });
 }
 
-// â”€â”€ Private fetch helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â”€â”€ Private fetch helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async function _fetchTavily(
   query: string,
@@ -1076,7 +1079,7 @@ async function _fetchTavily(
 
   let resp: Response;
   try {
-    resp = await fetch("https://api.tavily.com/search", {
+    resp = await multiKeyFetch("https://api.tavily.com/search", {
       method:  "POST",
       headers: {
         "Content-Type":  "application/json",
@@ -1144,7 +1147,7 @@ async function _fetchSerper(
   const timeout = setTimeout(() => controller.abort(), 7000);
   let resp: Response;
   try {
-    resp = await fetch("https://google.serper.dev/search", {
+    resp = await multiKeyFetch("https://google.serper.dev/search", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -1196,7 +1199,7 @@ async function _fetchExa(
   const timeout = setTimeout(() => controller.abort(), 8000);
   let resp: Response;
   try {
-    resp = await fetch("https://api.exa.ai/search", {
+    resp = await multiKeyFetch("https://api.exa.ai/search", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -1258,10 +1261,9 @@ async function _fetchBrave(
   });
   let resp: Response;
   try {
-    resp = await fetch(`https://api.search.brave.com/res/v1/web/search?${params}`, {
+    resp = await multiKeyFetch(`https://api.search.brave.com/res/v1/web/search?${params.toString()}`, {
       headers: {
         "Accept": "application/json",
-        "Accept-Encoding": "gzip",
         "X-Subscription-Token": apiKey,
       },
       signal: controller.signal,

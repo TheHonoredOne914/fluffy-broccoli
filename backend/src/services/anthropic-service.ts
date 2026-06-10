@@ -3814,6 +3814,7 @@ async function handleMultiSearch(
     getIsDisconnected?: () => boolean;
     agendaIntelligence?: AgendaIntelligence;
     runIdentity?: ResearchRunIdentity;
+    abortSignal?: AbortSignal;
   }
 ) {
   const {
