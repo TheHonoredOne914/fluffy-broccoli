@@ -107,8 +107,6 @@ const councilLimiter = rateLimit({
   max: config.RATE_LIMIT_COUNCIL_MAX ?? 1,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req: Request) =>
-    `council_${req.ip}_${req.headers["x-forwarded-for"] ?? ""}`,
   message: {
     error: "Council mode is limited to 1 run per day. Come back tomorrow.",
     code: "council_daily_limit",
@@ -121,8 +119,6 @@ const researchLimiter = rateLimit({
   max: config.RATE_LIMIT_RESEARCH_MAX ?? 30,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req: Request) =>
-    `research_${req.ip}_${req.headers["x-forwarded-for"] ?? ""}`,
   message: {
     error: "Research rate limit exceeded (30/hr). Please wait before submitting another run.",
     code: "research_rate_limited",

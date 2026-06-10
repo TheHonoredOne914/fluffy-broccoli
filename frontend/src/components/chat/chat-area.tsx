@@ -662,8 +662,8 @@ export function ChatArea({
   const activeModeModelSetter = currentMode === "fast_research" ? setWebSearchModels : setDeepResearchModels;
   const activeModeColor = chatType === "rhetorics" ? "#8b5cf6" : MODE_META[currentMode].hex;
   const isWelcome = !conversationId && !isStreaming && !conversation;
-  // Fix (Bug L653): keep sidebar mounted after streaming ends so sources remain visible
-  const showResearchRail = (isStreaming || pipeline.isComplete) && chatType === "research" && currentMode !== "normal";
+  const effectiveMode = (isStreaming || pipeline.isComplete) && pipeline.selectedResearchMode ? pipeline.selectedResearchMode : currentMode;
+  const showResearchRail = (isStreaming || pipeline.isComplete) && chatType === "research" && effectiveMode !== "normal";
   const researchSidebarSummary = useMemo(() => summarizeResearchRunSidebar({
     activeArchiveName,
     activeArchiveTopic,

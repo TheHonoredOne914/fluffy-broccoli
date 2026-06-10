@@ -1,4 +1,4 @@
-import { useCallback, useEffect, type Dispatch, type SetStateAction } from "react";
+import { useCallback, useEffect, useRef, type Dispatch, type SetStateAction } from "react";
 import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import {
   getGetAnthropicConversationQueryKey,
@@ -731,6 +731,14 @@ export function useChatRunController({
       }
 
       streamSucceeded = !terminalState.failureReceived && (gotContent || terminalState.successReceived || terminalState.receivedDone);
+      
+      // Fix: If the stream closed but we never received a terminal event from the backend,
+      // force transition the pipeline out of the "running" state so the UI doesn't lock up.
+      if (!terminalState.failureReceived && !terminalState.successReceived) {
+        dispatchPipeline({ type: "RUN_STATUS", status: streamSucceeded ? "completed" : "failed" });
+        dispatchPipeline({ type: "COMPLETE" });
+      }
+
       return streamSucceeded;
     } finally {
       document.removeEventListener("visibilitychange", onVisibilityChange);

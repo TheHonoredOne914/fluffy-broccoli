@@ -121,44 +121,44 @@ grant usage, select on all sequences in schema public to anon, authenticated;
 drop policy if exists "BestDel backend anon full access archives" on public.archives;
 create policy "BestDel backend anon full access archives"
   on public.archives for all to anon, authenticated
-  using (true)
-  with check (true);
+  using (false)
+  with check (false);
 
 drop policy if exists "BestDel backend anon full access conversations" on public.conversations;
 create policy "BestDel backend anon full access conversations"
   on public.conversations for all to anon, authenticated
-  using (true)
-  with check (true);
+  using (false)
+  with check (false);
 
 drop policy if exists "BestDel backend anon full access messages" on public.messages;
 create policy "BestDel backend anon full access messages"
   on public.messages for all to anon, authenticated
-  using (true)
-  with check (true);
+  using (false)
+  with check (false);
 
 drop policy if exists "BestDel backend anon full access archive contexts" on public.archive_contexts;
 create policy "BestDel backend anon full access archive contexts"
   on public.archive_contexts for all to anon, authenticated
-  using (true)
-  with check (true);
+  using (false)
+  with check (false);
 
 drop policy if exists "BestDel backend anon full access archive research angles" on public.archive_research_angles;
 create policy "BestDel backend anon full access archive research angles"
   on public.archive_research_angles for all to anon, authenticated
-  using (true)
-  with check (true);
+  using (false)
+  with check (false);
 
 drop policy if exists "BestDel backend anon full access archive intelligence profiles" on public.archive_intelligence_profiles;
 create policy "BestDel backend anon full access archive intelligence profiles"
   on public.archive_intelligence_profiles for all to anon, authenticated
-  using (true)
-  with check (true);
+  using (false)
+  with check (false);
 
 drop policy if exists "Allow all operations on cache_entries" on public.cache_entries;
 create policy "Allow all operations on cache_entries"
   on public.cache_entries for all to anon, authenticated
-  using (true)
-  with check (true);
+  using (false)
+  with check (false);
 
 -- ==================== DONE ====================
 -- All 7 tables created: archives, conversations, messages,
@@ -167,6 +167,10 @@ create policy "Allow all operations on cache_entries"
 
 -- ==================== SIZE GUARDS (run as migration) ====================
 -- Add size guards to messages table
+ALTER TABLE IF EXISTS public.messages 
+  DROP CONSTRAINT IF EXISTS messages_content_length,
+  DROP CONSTRAINT IF EXISTS messages_metadata_length;
+
 ALTER TABLE public.messages
   ADD CONSTRAINT messages_content_length CHECK (length(content) <= 524288),       -- 512KB
   ADD CONSTRAINT messages_metadata_length CHECK (
@@ -174,6 +178,9 @@ ALTER TABLE public.messages
   );
 
 -- Add size guard to evidence registry in archive_intelligence_profiles
+ALTER TABLE IF EXISTS public.archive_intelligence_profiles
+  DROP CONSTRAINT IF EXISTS aip_evidence_registry_length;
+
 ALTER TABLE public.archive_intelligence_profiles
   ADD CONSTRAINT aip_evidence_registry_length CHECK (
     evidence_registry IS NULL OR length(evidence_registry) <= 2097152            -- 2MB
