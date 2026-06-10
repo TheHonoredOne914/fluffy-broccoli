@@ -255,7 +255,7 @@ export function ChatArea({
     dispatchPipeline({ type: "RUN_STATUS", status: "cancelled" });
   }, [dispatchPipeline, handleStop]);
 
-  // Cleanup in-flight stream and reset state when switching conversations
+  // Cleanup in-flight stream and reset state when switching conversations or archives
   useEffect(() => {
     if (conversationId != null && skipNextConversationResetRef.current === conversationId) {
       skipNextConversationResetRef.current = null;
@@ -266,7 +266,7 @@ export function ChatArea({
     resetPipeline();
     setInput("");
     return () => abortStreamsForConversation(conversationId);
-  }, [abortStreamsForConversation, conversationId, handleStop, resetPipeline]);
+  }, [abortStreamsForConversation, conversationId, activeArchiveId, handleStop, resetPipeline]);
 
   const { data: conversation, isLoading } = useGetAnthropicConversation(
     conversationId as number,

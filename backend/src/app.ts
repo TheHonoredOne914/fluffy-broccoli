@@ -5,6 +5,11 @@ import pinoHttp from "pino-http";
 import router from "./routes/index.js";
 import { logger } from "./lib/logger.js";
 import { ProviderRouterError } from "./lib/provider-router.js";
+import { fileURLToPath } from "node:url";
+import { join, dirname } from "node:path";
+import { existsSync } from "node:fs";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const app: Express = express();
 
@@ -48,6 +53,26 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 app.use("/api", router);
+
+// Production: serve frontend static files from backend
+if (process.env.NODE_ENV === "production") {
+  const frontendDist = join(__dirname, "../../frontend/dist/public");
+  if (existsSync(frontendDist)) {
+    app.use(express.static(frontendDist, {
+      maxAge: "1y",
+      immutable: true,
+      index: false,  // don't serve index.html for /api routes
+    }));
+
+    // SPA fallback — serve index.html for all non-API routes
+    app.get("*", (req, res, next) => {
+      if (req.path.startsWith("/api")) return next();
+      const indexPath = join(frontendDist, "index.html");
+      if (!existsSync(indexPath)) return next();
+      res.sendFile(indexPath);
+    });
+  }
+}
 
 app.use((err: unknown, req: express.Request, res: express.Response, next: express.NextFunction) => {
   if (res.headersSent) {

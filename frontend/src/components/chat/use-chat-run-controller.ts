@@ -295,6 +295,15 @@ export function useChatRunController({
           }
         }, silenceTimeoutMs);
       };
+      
+      // Clear silence timer when controller is aborted (Bug 8 fix)
+      controller.signal.addEventListener("abort", () => {
+        if (silenceTimer) {
+          clearTimeout(silenceTimer);
+          silenceTimer = null;
+        }
+      }, { once: true });
+      
       silenceTimerResetRef.current = resetSilenceTimer;
       resetSilenceTimer();
 
