@@ -1,3 +1,88 @@
-```ts
+```gitignore
+# Dependencies
+node_modules/
 
+# Build artifacts
+dist/
+
+# Environment variables
+.env
+.env.local
+.env.*
+
+# IDE and editor settings
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.swp
+
+# Compiled files
+*.pyc
+__pycache__/
+
+# Processed by esbuild
+backend/node_modules/.bin/esbuild
+
+# Package lock file
+backend/node_modules/.package-lock.json
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Coverage reports
+coverage/
+htmlcov/
+
+# Python virtual environments
+venv/
+.venv/
+
+# TypeScript build output
+*.tsbuildinfo
+
+# Supabase local state (if applicable)
+supabase/.temp/
+supabase/.branches/
+
+# Vitest cache
+node_modules/.cache/vitest
+
+# Local Supabase config might be in .env files which are already covered
+
+# Additional common ignores
+*.env.local
+.env.production
+.env.development
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+node_modules/
+coverage/
+.nyc_output/
+.pytest_cache/
+.mypy_cache/
+.hypothesis/
+.vscode/
+.idea/
+dist/
+build/
+*.pyc
+__pycache__/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+.env
+.env.local
+.env.*
+*.env.*
 ```

@@ -12,6 +12,7 @@ import {
   getArchiveResearchAngles,
   upsertArchiveResearchAngles,
   toApiArchive,
+  getSupabaseClient,
   type ApiArchiveRecord,
   type ArchiveRecord
 } from "../db.js";
@@ -154,15 +155,25 @@ async function generateAngles(topic: string, committee?: string): Promise<{ angl
 
 const supabaseArchivesStore: ArchivesStore = {
   async listArchives() {
-    const rows = await listArchives();
-    const anglesPromises = rows.map(async (row) => {
-      const anglesData = await getArchiveResearchAngles(row.id);
-      return {
-        ...toApiArchive(row),
-        researchAngles: anglesData ? parseJsonArray(anglesData.angles_json) : [],
-      };
-    });
-    return Promise.all(anglesPromises);
+    const supabase = getSupabaseClient();
+
+    // Single batched query for all angles
+    const [archivesRes, anglesRes] = await Promise.all([
+      supabase.from('archives').select('*').order('created_at', { ascending: true }),
+      supabase.from('archive_research_angles').select('archive_id, angles_json'),
+    ]);
+
+    if (archivesRes.error) throw archivesRes.error;
+    if (anglesRes.error) throw anglesRes.error;
+
+    const anglesMap = new Map(
+      (anglesRes.data ?? []).map((r: { archive_id: number; angles_json: string }) => [r.archive_id, r.angles_json])
+    );
+
+    return (archivesRes.data ?? []).map((row: any) => ({
+      ...toApiArchive(row),
+      researchAngles: parseJsonArray(anglesMap.get(row.id) ?? '[]'),
+    }));
   },
   async createArchive(input) {
     try {

@@ -93,17 +93,21 @@ let _supabase: SupabaseClient | null = null;
 export function getSupabaseClient(): SupabaseClient {
   if (!_supabase) {
     const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseKey = process.env.SUPABASE_ANON_KEY;
+    // Prefer service role key for server-side; fall back to anon only if not set
+    const supabaseKey =
+      process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
+      process.env.SUPABASE_ANON_KEY?.trim();
 
     if (!supabaseUrl || !supabaseKey) {
       throw new Error(
-        'Missing Supabase credentials. Set SUPABASE_URL and SUPABASE_ANON_KEY environment variables.'
+        'Missing Supabase credentials. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env'
       );
     }
 
     _supabase = createClient(supabaseUrl, supabaseKey, {
-      realtime: {
-        transport: WebSocket as unknown as typeof globalThis.WebSocket,
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
       },
     });
   }
@@ -335,8 +339,18 @@ export async function createMessageFromJson(
   runId?: string | null,
   runStatus?: string | null
 ): Promise<MessageRecord> {
-  const parsedMetadata = metadataJson ? JSON.parse(metadataJson) as Record<string, unknown> : null;
+  const parsedMetadata = safeParseJson(metadataJson);
   return createMessage(conversationId, role, content, parsedMetadata, runId, runStatus);
+}
+
+function safeParseJson(json: string | null | undefined): Record<string, unknown> | null {
+  if (!json) return null;
+  try {
+    const parsed = JSON.parse(json);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function updateMessage(

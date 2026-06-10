@@ -164,3 +164,21 @@ create policy "Allow all operations on cache_entries"
 -- All 7 tables created: archives, conversations, messages,
 -- archive_contexts, archive_research_angles,
 -- archive_intelligence_profiles, cache_entries
+
+-- ==================== SIZE GUARDS (run as migration) ====================
+-- Add size guards to messages table
+ALTER TABLE public.messages
+  ADD CONSTRAINT messages_content_length CHECK (length(content) <= 524288),       -- 512KB
+  ADD CONSTRAINT messages_metadata_length CHECK (
+    metadata_json IS NULL OR length(metadata_json) <= 1048576                     -- 1MB
+  );
+
+-- Add size guard to evidence registry in archive_intelligence_profiles
+ALTER TABLE public.archive_intelligence_profiles
+  ADD CONSTRAINT aip_evidence_registry_length CHECK (
+    evidence_registry IS NULL OR length(evidence_registry) <= 2097152            -- 2MB
+  );
+
+-- Optional: auto-expire cache via pg_cron (run once in Supabase SQL editor if pg_cron is enabled)
+-- select cron.schedule('cache-cleanup', '0 */6 * * *',
+--   $$delete from public.cache_entries where expires_at < now()$$);
