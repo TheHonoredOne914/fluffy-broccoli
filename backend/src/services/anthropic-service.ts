@@ -4706,6 +4706,13 @@ async function handleMultiSearch(
 }
 
 router.post("/anthropic/conversations/:id/messages", async (req, res) => {
+  // Guard: max message content 32KB
+  const rawContent = req.body?.content;
+  if (typeof rawContent === "string" && rawContent.length > 32_768) {
+    res.status(400).json({ error: "Message content exceeds 32KB limit.", code: "content_too_large" });
+    return;
+  }
+
   const paramsParsed = SendAnthropicMessageParams.safeParse({ id: Number(req.params.id) });
   const bodyParsed = SendAnthropicMessageBody.safeParse(req.body);
   if (!paramsParsed.success || !bodyParsed.success) { res.status(400).json({ error: "Invalid request" }); return; }
